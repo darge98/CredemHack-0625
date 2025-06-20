@@ -1,0 +1,38 @@
+name: Build, Push, and Notify for Evaluation
+
+on:
+  push:
+    branches:
+      - main  # Esegue l'action solo quando fai un push sul branch 'main'
+
+jobs:
+  build-and-evaluate:
+    name: Build and Submit for Evaluation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT }}
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Build and Push Docker Image
+        id: build_image
+        run: |
+          IMAGE_URI="europe-west1-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/hackathon-solutions/credemhack-${{ secrets.TEAM_NAME }}:v1"
+          echo "Building and pushing image: $IMAGE_URI"
+          gcloud builds submit --tag "$IMAGE_URI" .
+          echo "image_uri=$IMAGE_URI" >> $GITHUB_OUTPUT
+
+      - name: Notify for Evaluation
+        run: |
+          echo "Publishing submission message for tag: ${{ steps.build_image.outputs.image_uri }}"
+          gcloud pubsub topics publish new-submission-topic \
+            --message='{"tag":"${{ steps.build_image.outputs.image_uri }}"}'
