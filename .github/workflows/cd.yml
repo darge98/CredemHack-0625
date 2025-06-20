@@ -3,7 +3,7 @@ name: Build, Push, and Notify for Evaluation
 on:
   push:
     branches:
-      - main  # Esegue l'action solo quando fai un push sul branch 'main'
+      - main
 
 jobs:
   build-and-evaluate:
